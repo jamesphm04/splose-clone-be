@@ -42,7 +42,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	user, err := h.userSvc.Register(c.Request.Context(), in)
 	if err != nil {
 		if errors.Is(err, services.ErrEmailTaken) {
-			utils.Conflict(c, "email already registered")
+			utils.Conflict(c, err.Error())
 			return
 		}
 
@@ -66,10 +66,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	pair, err := h.userSvc.Login(c.Request.Context(), in)
+	user, pair, err := h.userSvc.Login(c.Request.Context(), in)
 	if err != nil {
 		if errors.Is(err, services.ErrInvalidCredentials) {
-			utils.Unauthorized(c, "invalid credentials")
+			utils.Unauthorized(c, err.Error())
 			return
 		}
 		h.log.Error("login failed", zap.Error(err))
@@ -77,7 +77,18 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	utils.OK(c, pair)
+	utils.OK(c, gin.H{
+		"user": gin.H{
+			"id":       user.ID,
+			"email":    user.Email,
+			"username": user.Username,
+			"role":     user.Role,
+		},
+		"tokens": gin.H{
+			"accessToken":  pair.AccessToken,
+			"refreshToken": pair.RefreshToken,
+		},
+	})
 }
 
 // Refresh  POST /api/v1/auth/refresh
@@ -92,7 +103,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 
 	pair, err := h.userSvc.RefreshTokens(c.Request.Context(), body.RefreshToken)
 	if err != nil {
-		utils.Unauthorized(c, "invalid or expired refresh token")
+		utils.Unauthorized(c, err.Error())
 		return
 	}
 

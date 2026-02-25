@@ -1,0 +1,9 @@
+root = "."
+
+[build]
+cmd = "go build -o ./tmp/app ./cmd/api"
+bin = "./tmp/app"
+delay = 1000
+
+[log]
+time = true

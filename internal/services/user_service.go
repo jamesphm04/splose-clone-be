@@ -13,8 +13,6 @@ import (
 	"github.com/jamesphm04/splose-clone-be/pkg/auth"
 )
 
-// DTOs
-
 type RegisterInput struct {
 	Email    string `json:"email"    validate:"required,email"`
 	Username string `json:"username" validate:"required,min=3,max=50"`
@@ -88,29 +86,29 @@ func (s *UserService) Register(ctx context.Context, in RegisterInput) (*entities
 }
 
 // Login authenticates credentials and returns a JWT token pair
-func (s *UserService) Login(ctx context.Context, in LoginInput) (*TokenPair, error) {
+func (s *UserService) Login(ctx context.Context, in LoginInput) (*entities.User, *TokenPair, error) {
 	user, err := s.repo.FindByEmail(ctx, in.Email)
 	if err != nil {
 		if errors.Is(err, repositories.ErrNotFound) {
 			// Not and error, just a fail attempt
 			s.log.Debug("login failed: email not found", zap.String("email", in.Email))
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(in.Password)); err != nil {
 		// Not and error, just a fail attempt
 		s.log.Debug("login failed: wrong password", zap.String("userID", user.ID))
-		return nil, ErrInvalidCredentials
+		return nil, nil, ErrInvalidCredentials
 	}
 
 	pair, err := s.issueTokenPair(user.ID, user.Role)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	s.log.Info("user logged in", zap.String("userID", user.ID))
-	return pair, nil
+	return user, pair, nil
 }
 
 // RefreshTokens validates a refresh token and issues a new pair

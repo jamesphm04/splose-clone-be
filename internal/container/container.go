@@ -27,14 +27,17 @@ type Container struct {
 	S3Client   *storage.Client
 
 	// Repositories
-	UserRepo repositories.UserRepository
+	UserRepo    repositories.UserRepository
+	PatientRepo repositories.PatientRepository
 
 	// Services
-	UserSvc *services.UserService
+	UserSvc    *services.UserService
+	PatientSvc *services.PatientService
 
 	// Handlers
-	AuthHandler *handlers.AuthHandler
-	UserHandler *handlers.UserHandler
+	AuthHandler    *handlers.AuthHandler
+	UserHandler    *handlers.UserHandler
+	PatientHandler *handlers.PatientHandler
 }
 
 // New wires the fill dependency graph and returns a ready Container
@@ -92,26 +95,30 @@ func (c *Container) buildInfrastructure() error {
 
 func (c *Container) buildRepositories() {
 	c.UserRepo = repositories.NewUserRepository(c.db, c.log)
+	c.PatientRepo = repositories.NewPatientRepository(c.db, c.log)
 }
 
 func (c *Container) buildServices() error {
 	c.UserSvc = services.NewUserService(c.UserRepo, c.JWTManager, c.cfg.Security.BcryptCost, c.log)
+	c.PatientSvc = services.NewPatientService(c.PatientRepo, c.log)
 	return nil
 }
 
 func (c *Container) buildHandlers() error {
 	c.AuthHandler = handlers.NewAuthHandler(c.UserSvc, c.log)
 	c.UserHandler = handlers.NewUserHandler(c.UserSvc, c.log)
+	c.PatientHandler = handlers.NewPatientHandler(c.PatientSvc, c.log)
 	return nil
 }
 
 // Router returns a fully configured *gin.Engine by assembling the handler deps.
 func (c *Container) Router() interface{} {
 	return handlers.SetupRouter(handlers.RouterDeps{
-		Log:         c.log,
-		JWTManager:  c.JWTManager,
-		AuthHandler: c.AuthHandler,
-		UserHandler: c.UserHandler,
+		Log:            c.log,
+		JWTManager:     c.JWTManager,
+		AuthHandler:    c.AuthHandler,
+		UserHandler:    c.UserHandler,
+		PatientHandler: c.PatientHandler,
 	})
 }
 

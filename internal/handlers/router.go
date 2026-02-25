@@ -15,11 +15,11 @@ import (
 // RouterDeps bundles every dependency needed to build the HTTP router.
 // It is populated by the DI Container and passed to SetupRouter.
 type RouterDeps struct {
-	Log         *zap.Logger // root logger – middleware uses named children
-	JWTManager  *auth.Manager
-	AuthHandler *AuthHandler
-	UserHandler *UserHandler
-	// PatientHandler *PatientHandler
+	Log            *zap.Logger // root logger – middleware uses named children
+	JWTManager     *auth.Manager
+	AuthHandler    *AuthHandler
+	UserHandler    *UserHandler
+	PatientHandler *PatientHandler
 	// NoteHandler    *NoteHandler
 	// ConvHandler    *ConversationHandler
 	// PromptHandler  *PromptHandler
@@ -60,12 +60,20 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 	protected := v1.Group("")
 	protected.Use(middleware.Authenticate(deps.JWTManager))
 	{
+		// User endpoints
 		users := protected.Group("/users")
 		{
 			users.GET("/me", deps.UserHandler.GetMe)
 			users.PATCH("/:id", deps.UserHandler.Update)
 			users.DELETE("/:id", deps.UserHandler.Delete)
 			users.GET("", middleware.RequireRole("admin"), deps.UserHandler.List)
+		}
+		// Patient endpoints
+		patients := protected.Group("/patients")
+		{
+			patients.POST("", deps.PatientHandler.Create)
+			patients.GET("/:id", deps.PatientHandler.GetByID)
+			patients.GET("", deps.PatientHandler.List)
 		}
 	}
 

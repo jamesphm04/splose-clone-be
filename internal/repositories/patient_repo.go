@@ -69,7 +69,9 @@ func (r *patientRepo) FindByEmail(ctx context.Context, email string) (*entities.
 
 func (r *patientRepo) FindByPhoneNumber(ctx context.Context, phoneNumber string) (*entities.Patient, error) {
 	var p entities.Patient
-	err := r.db.WithContext(ctx).First(&p, "phoneNumber = ?", phoneNumber).Error
+	err := r.db.WithContext(ctx).
+		Where("phone_number = ?", phoneNumber).
+		First(&p).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrNotFound
 	}

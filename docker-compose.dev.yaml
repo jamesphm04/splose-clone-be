@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  api:
+    image: cosmtrek/air
+    container_name: splose-clone-be
+    working_dir: /app
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    command: air
