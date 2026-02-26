@@ -3,6 +3,7 @@ package entities
 import (
 	"time"
 
+	"github.com/jamesphm04/splose-clone-be/internal/types"
 	"gorm.io/gorm"
 )
 
@@ -22,7 +23,7 @@ type Patient struct {
 	FirstName   string         `gorm:"not null"                       json:"firstName"`
 	LastName    string         `gorm:"not null"                       json:"lastName"`
 	PhoneNumber string         `gorm:"type:varchar(30)"               json:"phoneNumber,omitempty"`
-	DateOfBirth *time.Time     `                                      json:"dateOfBirth,omitempty"`
+	DateOfBirth *types.Date    `                                      json:"dateOfBirth,omitempty"`
 	Gender      Gender         `gorm:"type:varchar(10)"               json:"gender,omitempty"`
 	FullAddress string         `gorm:"type:text"                      json:"fullAddress,omitempty"`
 	UserID      string         `gorm:"type:uuid;not null;index"       json:"userId"`

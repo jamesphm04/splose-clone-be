@@ -10,6 +10,7 @@ import (
 
 	"github.com/jamesphm04/splose-clone-be/internal/models/entities"
 	"github.com/jamesphm04/splose-clone-be/internal/repositories"
+	"github.com/jamesphm04/splose-clone-be/internal/types"
 )
 
 type CreatePatientInput struct {
@@ -74,11 +75,11 @@ func (s *PatientService) Create(ctx context.Context, in CreatePatientInput) (*en
 		FirstName:   in.FirstName,
 		LastName:    in.LastName,
 		PhoneNumber: in.PhoneNumber,
-		DateOfBirth: &dateOfBirth,
 		Gender:      gender,
 		FullAddress: in.FullAddress,
 		UserID:      in.UserID,
 	}
+	patient.DateOfBirth = &types.Date{Time: dateOfBirth}
 
 	if err := s.repo.Create(ctx, patient); err != nil {
 		s.log.Error("patient creation failed", zap.Error(err))
@@ -136,7 +137,7 @@ func (s *PatientService) Update(ctx context.Context, id string, in UpdatePatient
 			s.log.Error("patient update failed", zap.String("id", id), zap.Error(err))
 			return nil, fmt.Errorf("updating patient: %w", err)
 		}
-		patient.DateOfBirth = &dateOfBirth
+		patient.DateOfBirth = &types.Date{Time: dateOfBirth}
 	}
 
 	if in.Gender != nil {
