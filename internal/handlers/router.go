@@ -74,6 +74,7 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 			patients.POST("", deps.PatientHandler.Create)
 			patients.GET("/:id", deps.PatientHandler.GetByID)
 			patients.GET("", deps.PatientHandler.List)
+			patients.PATCH("/:id", deps.PatientHandler.Update)
 		}
 	}
 

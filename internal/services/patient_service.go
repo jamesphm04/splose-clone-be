@@ -23,6 +23,16 @@ type CreatePatientInput struct {
 	UserID      string `json:"userId" validate:"required,uuid"`
 }
 
+type UpdatePatientInput struct {
+	Email       *string `json:"email" validate:"omitempty,email"`
+	FirstName   *string `json:"firstName" validate:"omitempty,min=2,max=50"`
+	LastName    *string `json:"lastName" validate:"omitempty,min=2,max=50"`
+	PhoneNumber *string `json:"phoneNumber" validate:"omitempty,phoneNumber"`
+	DateOfBirth *string `json:"dateOfBirth" validate:"omitempty,dateOfBirth"`
+	Gender      *string `json:"gender" validate:"omitempty,oneof=male female other unknown"`
+	FullAddress *string `json:"fullAddress" validate:"omitempty,min=2,max=255"`
+}
+
 // Service
 type PatientService struct {
 	repo repositories.PatientRepository
@@ -95,6 +105,60 @@ func (s *PatientService) List(ctx context.Context, offset, limit int) ([]entitie
 		return nil, 0, fmt.Errorf("listing patients: %w", err)
 	}
 	return patients, total, nil
+}
+
+func (s *PatientService) Update(ctx context.Context, id string, in UpdatePatientInput) (*entities.Patient, error) {
+	patient, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		s.log.Error("patient update failed", zap.String("id", id), zap.Error(err))
+		return nil, fmt.Errorf("updating patient: %w", err)
+	}
+
+	if in.Email != nil {
+		patient.Email = *in.Email
+	}
+
+	if in.FirstName != nil {
+		patient.FirstName = *in.FirstName
+	}
+
+	if in.LastName != nil {
+		patient.LastName = *in.LastName
+	}
+
+	if in.PhoneNumber != nil {
+		patient.PhoneNumber = *in.PhoneNumber
+	}
+
+	if in.DateOfBirth != nil {
+		dateOfBirth, err := time.Parse(time.DateOnly, *in.DateOfBirth)
+		if err != nil {
+			s.log.Error("patient update failed", zap.String("id", id), zap.Error(err))
+			return nil, fmt.Errorf("updating patient: %w", err)
+		}
+		patient.DateOfBirth = &dateOfBirth
+	}
+
+	if in.Gender != nil {
+		gender := entities.Gender(*in.Gender)
+		if gender != entities.GenderMale && gender != entities.GenderFemale && gender != entities.GenderOther && gender != entities.GenderUnknown {
+			s.log.Error("patient update failed", zap.String("id", id), zap.Error(err))
+			return nil, fmt.Errorf("updating patient: %w", err)
+		}
+		patient.Gender = gender
+	}
+
+	if in.FullAddress != nil {
+		patient.FullAddress = *in.FullAddress
+	}
+
+	if err := s.repo.Update(ctx, patient); err != nil {
+		s.log.Error("patient update failed", zap.String("id", id), zap.Error(err))
+		return nil, fmt.Errorf("updating patient: %w", err)
+	}
+
+	s.log.Info("patient updated", zap.String("id", id))
+	return patient, nil
 }
 
 var (

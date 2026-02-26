@@ -69,3 +69,24 @@ func (h *PatientHandler) List(c *gin.Context) {
 	}
 	utils.OKList(c, patients, utils.BuildMeta(page, pageSize, total))
 }
+
+// Update  PATCH /api/v1/patients/:id
+func (h *PatientHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	var in services.UpdatePatientInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		utils.BadRequest(c, "invalid request body")
+		return
+	}
+	if err := h.validate.Struct(in); err != nil {
+		utils.BadRequest(c, err.Error())
+		return
+	}
+
+	patient, err := h.patientSvc.Update(c.Request.Context(), id, in)
+	if err != nil {
+		utils.BadRequest(c, err.Error())
+		return
+	}
+	utils.OK(c, patient)
+}
