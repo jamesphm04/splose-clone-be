@@ -11,6 +11,7 @@ type Note struct {
 	ID        string         `gorm:"type:uuid;primaryKey"           json:"id"`
 	PatientID string         `gorm:"type:uuid;not null;index"       json:"patientId"`
 	UserID    string         `gorm:"type:uuid;not null;index"       json:"userId"`
+	Title     string         `gorm:"type:varchar(255)"              json:"title"`
 	Content   string         `gorm:"type:text"                      json:"content"`
 	CreatedAt time.Time      `                                      json:"createdAt"`
 	UpdatedAt time.Time      `                                      json:"updatedAt"`
@@ -18,7 +19,7 @@ type Note struct {
 
 	// Associations
 	Patient       Patient        `gorm:"foreignKey:PatientID"    json:"-"`
-	User          User           `gorm:"foreignKey:UserID"       json:"-"`
+	User          User           `gorm:"foreignKey:UserID"       json:"user"`
 	Conversations []Conversation `gorm:"foreignKey:NoteID"       json:"-"`
 	Attachments   []Attachment   `gorm:"foreignKey:NoteID"       json:"-"`
 }

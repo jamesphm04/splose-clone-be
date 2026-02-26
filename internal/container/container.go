@@ -29,15 +29,18 @@ type Container struct {
 	// Repositories
 	UserRepo    repositories.UserRepository
 	PatientRepo repositories.PatientRepository
+	NoteRepo    repositories.NoteRepository
 
 	// Services
-	UserSvc    *services.UserService
-	PatientSvc *services.PatientService
+	UserSvc     *services.UserService
+	PatientSvc  *services.PatientService
+	NoteService *services.NoteService
 
 	// Handlers
 	AuthHandler    *handlers.AuthHandler
 	UserHandler    *handlers.UserHandler
 	PatientHandler *handlers.PatientHandler
+	NoteHandler    *handlers.NoteHandler
 }
 
 // New wires the fill dependency graph and returns a ready Container
@@ -96,11 +99,13 @@ func (c *Container) buildInfrastructure() error {
 func (c *Container) buildRepositories() {
 	c.UserRepo = repositories.NewUserRepository(c.db, c.log)
 	c.PatientRepo = repositories.NewPatientRepository(c.db, c.log)
+	c.NoteRepo = repositories.NewNoteRepository(c.db, c.log)
 }
 
 func (c *Container) buildServices() error {
 	c.UserSvc = services.NewUserService(c.UserRepo, c.JWTManager, c.cfg.Security.BcryptCost, c.log)
 	c.PatientSvc = services.NewPatientService(c.PatientRepo, c.log)
+	c.NoteService = services.NewNoteService(c.NoteRepo, c.log)
 	return nil
 }
 
@@ -108,6 +113,7 @@ func (c *Container) buildHandlers() error {
 	c.AuthHandler = handlers.NewAuthHandler(c.UserSvc, c.log)
 	c.UserHandler = handlers.NewUserHandler(c.UserSvc, c.log)
 	c.PatientHandler = handlers.NewPatientHandler(c.PatientSvc, c.log)
+	c.NoteHandler = handlers.NewNoteHandler(c.NoteService, c.log)
 	return nil
 }
 
@@ -119,6 +125,7 @@ func (c *Container) Router() interface{} {
 		AuthHandler:    c.AuthHandler,
 		UserHandler:    c.UserHandler,
 		PatientHandler: c.PatientHandler,
+		NoteHandler:    c.NoteHandler,
 	})
 }
 

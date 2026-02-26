@@ -12,6 +12,7 @@ import (
 type NoteRepository interface {
 	Create(ctx context.Context, note *entities.Note) error
 	FindByID(ctx context.Context, id string) (*entities.Note, error)
+	FindByPatientID(ctx context.Context, patientID string) ([]entities.Note, error)
 	List(ctx context.Context, offset, limit int) ([]entities.Note, int64, error)
 	Update(ctx context.Context, note *entities.Note) error
 	SoftDelete(ctx context.Context, id string) error
@@ -41,7 +42,11 @@ func (r *noteRepo) Create(ctx context.Context, note *entities.Note) error {
 
 func (r *noteRepo) FindByID(ctx context.Context, id string) (*entities.Note, error) {
 	var n entities.Note
-	err := r.db.WithContext(ctx).First(&n, "id = ?", id).Error
+	err := r.db.
+		WithContext(ctx).
+		Preload("User").
+		Preload("Patient").
+		First(&n, "id = ?", id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrNotFound
 	}
@@ -50,6 +55,24 @@ func (r *noteRepo) FindByID(ctx context.Context, id string) (*entities.Note, err
 	}
 
 	return &n, nil
+}
+
+func (r *noteRepo) FindByPatientID(ctx context.Context, patientID string) ([]entities.Note, error) {
+	var notes []entities.Note
+
+	err := r.db.
+		WithContext(ctx).
+		Preload("User").
+		Where("patient_id = ?", patientID).
+		Find(&notes).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		r.log.Error("FindByPatientID failed", zap.String("patientID", patientID), zap.Error(err))
+	}
+
+	return notes, nil
 }
 
 func (r *noteRepo) List(ctx context.Context, offset, limit int) ([]entities.Note, int64, error) {
