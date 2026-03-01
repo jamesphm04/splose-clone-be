@@ -21,7 +21,7 @@ type RouterDeps struct {
 	UserHandler    *UserHandler
 	PatientHandler *PatientHandler
 	NoteHandler    *NoteHandler
-	// ConvHandler    *ConversationHandler
+	ConvHandler    *ConversationHandler
 	// PromptHandler  *PromptHandler
 	// AttachHandler  *AttachmentHandler
 }
@@ -85,6 +85,13 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 			notes.GET("/patient/:patientID", deps.NoteHandler.ListByPatientID)
 			notes.GET("/:id", deps.NoteHandler.GetByID)
 			notes.PATCH("/:id", deps.NoteHandler.Update)
+			notes.DELETE("/:id", deps.NoteHandler.Delete)
+		}
+
+		// Conversation endpoints
+		conversations := protected.Group("/conversations")
+		{
+			conversations.POST("/send-message", deps.ConvHandler.SendMessage)
 		}
 	}
 

@@ -33,9 +33,9 @@ type Manager struct {
 }
 
 // NewManager creates a Manager with the given HMAC-SHA256 secret and TTLs.
-func NewManager(secrete string, accessTTL, refreshTTL time.Duration) *Manager {
+func NewManager(secret string, accessTTL, refreshTTL time.Duration) *Manager {
 	return &Manager{
-		secret:     []byte(secrete),
+		secret:     []byte(secret),
 		accessTTL:  accessTTL,
 		refreshTTL: refreshTTL,
 	}

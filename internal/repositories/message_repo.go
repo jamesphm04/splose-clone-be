@@ -11,6 +11,7 @@ import (
 
 type MessageRepository interface {
 	Create(ctx context.Context, message *entities.Message) error
+	FindByConversationID(ctx context.Context, conversationID string) ([]entities.Message, error)
 }
 
 type messageRepo struct {
@@ -87,4 +88,22 @@ func (r *messageRepo) SoftDelete(ctx context.Context, id string) error {
 
 	r.log.Info("message soft-deleted", zap.String("messageID", id))
 	return nil
+}
+
+func (r *messageRepo) FindByConversationID(ctx context.Context, conversationID string) ([]entities.Message, error) {
+	var msges []entities.Message
+
+	err := r.db.
+		WithContext(ctx).
+		Preload("Attachments").
+		Where("conversation_id = ?", conversationID).
+		Order("created_at ASC").
+		Find(&msges).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		r.log.Error("FindByConversationID failed", zap.String("conversationID", conversationID), zap.Error(err))
+	}
+	return msges, nil
 }

@@ -16,6 +16,7 @@ type Attachment struct {
 	Name      string         `gorm:"not null"                          json:"name"`
 	Type      string         `gorm:"type:varchar(100)"                 json:"type"` // MIME type
 	Size      int64          `                                         json:"size"` // bytes
+	S3Key     string         `gorm:"type:varchar(256);not null;index"  json:"_"`
 	CreatedAt time.Time      `                                         json:"createdAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index"                             json:"-"`
 }

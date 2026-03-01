@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/jamesphm04/splose-clone-be/internal/services"
 	"github.com/jamesphm04/splose-clone-be/internal/utils"
@@ -9,16 +11,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type CreateNoteResponse struct {
+	NoteID         string `json:"noteId"`
+	ConversationID string `json:"conversationId"`
+}
+
 type NoteHandler struct {
 	noteSvc  *services.NoteService
+	convSvc  *services.ConversationService
 	validate *validator.Validate
 	log      *zap.Logger
 }
 
-func NewNoteHandler(noteSvc *services.NoteService, log *zap.Logger) *NoteHandler {
+func NewNoteHandler(noteSvc *services.NoteService, convSvc *services.ConversationService, log *zap.Logger) *NoteHandler {
 	v := validator.New()
 	return &NoteHandler{
 		noteSvc:  noteSvc,
+		convSvc:  convSvc,
 		validate: v,
 		log:      log.Named("patient_handler"),
 	}
@@ -34,19 +43,31 @@ func (h *NoteHandler) Create(c *gin.Context) {
 		return
 	}
 
+	h.log.Info("note create request", zap.String("request", fmt.Sprintf("%+v", in)))
 	// then validate the request body
 	if err := h.validate.Struct(in); err != nil {
 		utils.BadRequest(c, err.Error())
 		return
 	}
 
+	// create the note
 	note, err := h.noteSvc.Create(c.Request.Context(), in)
 	if err != nil {
 		utils.BadRequest(c, err.Error())
 		return
 	}
 
-	utils.Created(c, note)
+	// create the conversation
+	conv, err := h.convSvc.Create(c.Request.Context(), services.CreateConversationInput{
+		NoteID: note.ID,
+	})
+
+	res := CreateNoteResponse{
+		NoteID:         note.ID,
+		ConversationID: conv.ID,
+	}
+
+	utils.Created(c, res)
 }
 
 // List GET /api/v1/notes
@@ -101,4 +122,14 @@ func (h *NoteHandler) Update(c *gin.Context) {
 		utils.BadRequest(c, err.Error())
 	}
 	utils.OK(c, note)
+}
+
+// Delete DELETE /api/v1/notes/:id
+func (h *NoteHandler) Delete(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.noteSvc.SoftDelete(c.Request.Context(), id); err != nil {
+		utils.BadRequest(c, err.Error())
+		return
+	}
+	utils.OK(c, gin.H{"message": "note deleted"})
 }

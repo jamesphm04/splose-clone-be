@@ -36,6 +36,16 @@ func (r *noteRepo) Create(ctx context.Context, note *entities.Note) error {
 		r.log.Error("failed to create note", zap.String("noteID", note.ID), zap.Error(err))
 	}
 
+	// Reload with relations
+	if err := r.db.
+		WithContext(ctx).
+		Preload("User").
+		Preload("Patient").
+		First(note, "id = ?", note.ID).
+		Error; err != nil {
+		return err
+	}
+
 	r.log.Info("note created", zap.String("noteID", note.ID))
 	return nil
 }
@@ -64,6 +74,7 @@ func (r *noteRepo) FindByPatientID(ctx context.Context, patientID string) ([]ent
 		WithContext(ctx).
 		Preload("User").
 		Where("patient_id = ?", patientID).
+		Order("updated_at DESC").
 		Find(&notes).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrNotFound

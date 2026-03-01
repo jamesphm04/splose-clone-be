@@ -92,7 +92,7 @@ func (r *patientRepo) List(ctx context.Context, offset, limit int) ([]entities.P
 	}
 
 	// list
-	if err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&patients).Error; err != nil {
+	if err := r.db.WithContext(ctx).Order("updated_at ASC").Offset(offset).Limit(limit).Find(&patients).Error; err != nil {
 		r.log.Error("List query failed", zap.Error(err))
 		return nil, 0, err
 	}

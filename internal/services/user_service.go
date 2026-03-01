@@ -123,7 +123,7 @@ func (s *UserService) RefreshTokens(ctx context.Context, refreshToken string) (*
 		return nil, ErrInvalidRefreshToken
 	}
 
-	user, err := s.repo.FindByEmail(ctx, claims.UserID)
+	user, err := s.repo.FindByID(ctx, claims.UserID)
 	if err != nil {
 		s.log.Warn("token refresh failed: user not found", zap.String("userID", claims.UserID))
 		return nil, ErrInvalidCredentials

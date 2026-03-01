@@ -27,20 +27,25 @@ type Container struct {
 	S3Client   *storage.Client
 
 	// Repositories
-	UserRepo    repositories.UserRepository
-	PatientRepo repositories.PatientRepository
-	NoteRepo    repositories.NoteRepository
-
+	UserRepo       repositories.UserRepository
+	PatientRepo    repositories.PatientRepository
+	NoteRepo       repositories.NoteRepository
+	ConvRepo       repositories.ConversationRepository
+	MessageRepo    repositories.MessageRepository
+	AttachmentRepo repositories.AttachmentRepository
 	// Services
-	UserSvc     *services.UserService
-	PatientSvc  *services.PatientService
-	NoteService *services.NoteService
-
+	UserSvc           *services.UserService
+	PatientSvc        *services.PatientService
+	NoteService       *services.NoteService
+	ConvService       *services.ConversationService
+	MessageService    *services.MessageService
+	AttachmentService *services.AttachmentService
 	// Handlers
 	AuthHandler    *handlers.AuthHandler
 	UserHandler    *handlers.UserHandler
 	PatientHandler *handlers.PatientHandler
 	NoteHandler    *handlers.NoteHandler
+	ConvHandler    *handlers.ConversationHandler
 }
 
 // New wires the fill dependency graph and returns a ready Container
@@ -86,6 +91,7 @@ func (c *Container) buildInfrastructure() error {
 		c.cfg.AWS.SecretAccessKey,
 		c.cfg.AWS.S3Bucket,
 		c.cfg.AWS.S3Endpoint,
+		c.cfg.AWS.PresignedURLTTL,
 		c.log,
 	)
 	if err != nil {
@@ -100,12 +106,18 @@ func (c *Container) buildRepositories() {
 	c.UserRepo = repositories.NewUserRepository(c.db, c.log)
 	c.PatientRepo = repositories.NewPatientRepository(c.db, c.log)
 	c.NoteRepo = repositories.NewNoteRepository(c.db, c.log)
+	c.ConvRepo = repositories.NewConversationRepository(c.db, c.log)
+	c.MessageRepo = repositories.NewMessageRepository(c.db, c.log)
+	c.AttachmentRepo = repositories.NewAttachmentRepository(c.db, c.log)
 }
 
 func (c *Container) buildServices() error {
 	c.UserSvc = services.NewUserService(c.UserRepo, c.JWTManager, c.cfg.Security.BcryptCost, c.log)
 	c.PatientSvc = services.NewPatientService(c.PatientRepo, c.log)
 	c.NoteService = services.NewNoteService(c.NoteRepo, c.log)
+	c.ConvService = services.NewConversationService(c.ConvRepo, c.log)
+	c.MessageService = services.NewMessageService(c.MessageRepo, c.log)
+	c.AttachmentService = services.NewAttachmentService(c.AttachmentRepo, c.S3Client, c.log)
 	return nil
 }
 
@@ -113,7 +125,8 @@ func (c *Container) buildHandlers() error {
 	c.AuthHandler = handlers.NewAuthHandler(c.UserSvc, c.log)
 	c.UserHandler = handlers.NewUserHandler(c.UserSvc, c.log)
 	c.PatientHandler = handlers.NewPatientHandler(c.PatientSvc, c.log)
-	c.NoteHandler = handlers.NewNoteHandler(c.NoteService, c.log)
+	c.NoteHandler = handlers.NewNoteHandler(c.NoteService, c.ConvService, c.log)
+	c.ConvHandler = handlers.NewConversationHandler(c.ConvService, c.MessageService, c.AttachmentService, c.log)
 	return nil
 }
 
@@ -126,6 +139,7 @@ func (c *Container) Router() interface{} {
 		UserHandler:    c.UserHandler,
 		PatientHandler: c.PatientHandler,
 		NoteHandler:    c.NoteHandler,
+		ConvHandler:    c.ConvHandler,
 	})
 }
 

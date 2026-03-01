@@ -16,14 +16,15 @@ import (
 
 // Client wraps the AWS S3 Client with bucket-scroped operations
 type Client struct {
-	s3     *s3.Client
-	bucket string
-	log    *zap.Logger
+	s3              *s3.Client
+	bucket          string
+	presignedURLTTL time.Duration
+	log             *zap.Logger
 }
 
 // NewClient creates an S3 Client
 // if endpoint is non-empty the client points at that URL (LocalStack, MinIO)
-func NewClient(ctx context.Context, region, accessKey, secretKey, bucket, endpoint string, log *zap.Logger) (*Client, error) {
+func NewClient(ctx context.Context, region, accessKey, secretKey, bucket, endpoint string, presignedURLTTL time.Duration, log *zap.Logger) (*Client, error) {
 	opts := []func(*awsconfig.LoadOptions) error{
 		awsconfig.WithRegion(region),
 		awsconfig.WithCredentialsProvider(
@@ -67,7 +68,8 @@ type UploadInput struct {
 }
 
 type UploadOutput struct {
-	URL string
+	URL          string
+	PresignedURL string
 }
 
 // Upload stores a file in S3 and returns its URL
@@ -88,7 +90,15 @@ func (c *Client) Upload(ctx context.Context, in UploadInput) (*UploadOutput, err
 
 	url := fmt.Sprintf("https://%s.s3.amazonaws.com/%s", c.bucket, in.Key)
 	c.log.Info("object uploaded", zap.String("key", in.Key), zap.Int64("size", in.Size))
-	return &UploadOutput{URL: url}, nil
+
+	// pre-sign the url
+	presignedURL, err := c.PresignURL(ctx, in.Key, 1*time.Hour)
+	if err != nil {
+		c.log.Error("PresignURL failed", zap.String("key", in.Key), zap.Error(err))
+		return nil, fmt.Errorf("presigning %q: %w", in.Key, err)
+	}
+
+	return &UploadOutput{URL: url, PresignedURL: presignedURL}, nil
 }
 
 // Delete removes an object from S3

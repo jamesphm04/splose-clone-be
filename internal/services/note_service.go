@@ -32,7 +32,7 @@ type NoteService struct {
 func NewNoteService(repo repositories.NoteRepository, log *zap.Logger) *NoteService {
 	return &NoteService{
 		repo: repo,
-		log:  log,
+		log:  log.Named("note-service"),
 	}
 }
 
@@ -108,4 +108,14 @@ func (s *NoteService) Update(ctx context.Context, id string, in UpdateNoteInput)
 
 	s.log.Info("note updated", zap.String("id", id))
 	return note, nil
+}
+
+func (s *NoteService) SoftDelete(ctx context.Context, id string) error {
+	if err := s.repo.SoftDelete(ctx, id); err != nil {
+		s.log.Error("note soft delete failed", zap.String("id", id), zap.Error(err))
+		return fmt.Errorf("soft deleting note: %w", err)
+	}
+
+	s.log.Info("note soft deleted", zap.String("id", id))
+	return nil
 }

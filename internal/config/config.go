@@ -59,7 +59,8 @@ type AWSConfig struct {
 	SecretAccessKey string
 	S3Bucket        string
 	// S3Endpoint allows pointing to LocalStack or MinIO in dev/test.
-	S3Endpoint string
+	S3Endpoint      string
+	PresignedURLTTL time.Duration
 }
 
 type SecurityConfig struct {
@@ -85,6 +86,10 @@ func Load() (*Config, error) {
 	connLifetime, err := time.ParseDuration(getEnv("DB_CONN_MAX_LIFETIME", "5m"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid DB_CONN_MAX_LIFETIME: %w", err)
+	}
+	presignedURLTTL, err := time.ParseDuration(getEnv("AWS_PRESIGNED_URL_TTL", "1h"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid AWS_PRESIGNED_URL_TTL: %w", err)
 	}
 
 	bcryptCost, _ := strconv.Atoi(getEnv("BCRYPT_COST", "12"))
@@ -121,6 +126,7 @@ func Load() (*Config, error) {
 			SecretAccessKey: mustEnv("AWS_SECRET_ACCESS_KEY"),
 			S3Bucket:        mustEnv("AWS_S3_BUCKET"),
 			S3Endpoint:      getEnv("AWS_S3_ENDPOINT", ""),
+			PresignedURLTTL: presignedURLTTL,
 		},
 		Security: SecurityConfig{
 			BcryptCost:    bcryptCost,
