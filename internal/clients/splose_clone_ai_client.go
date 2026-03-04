@@ -67,6 +67,5 @@ func (c *SploseCloneAIClient) SendMessage(ctx context.Context, request open_ai_c
 		return "", err
 	}
 
-	c.log.Debug("HEREEEEEEEEEEEEE", zap.Any("response", response))
 	return response.Message, nil
 }
