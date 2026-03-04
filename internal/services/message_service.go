@@ -38,6 +38,8 @@ func (s *MessageService) Create(ctx context.Context, in CreateMessageInput) (*en
 		Content:        in.Content,
 	}
 
+	s.log.Debug("HEREEEEEEEEEEEEE", zap.Any("msg", msg))
+
 	if err := s.repo.Create(ctx, msg); err != nil {
 		s.log.Error("message creation failed", zap.Error(err))
 		return nil, fmt.Errorf("creating message: %w", err)
@@ -48,10 +50,19 @@ func (s *MessageService) Create(ctx context.Context, in CreateMessageInput) (*en
 }
 
 func (s *MessageService) ListByConversationID(ctx context.Context, in ListByConversationIDInput) ([]entities.Message, int, error) {
-	msges, err := s.repo.FindByConversationID(ctx, in.ConversationID)
+	msgs, err := s.repo.FindByConversationID(ctx, in.ConversationID)
 	if err != nil {
 		s.log.Error("messages list failed", zap.String("conversationID", in.ConversationID), zap.Error(err))
 		return nil, 0, fmt.Errorf("listing messages: %w", err)
 	}
-	return msges, len(msges), nil
+	return msgs, len(msgs), nil
+}
+
+func (s *MessageService) ListByNoteID(ctx context.Context, noteID string) ([]entities.Message, error) {
+	msgs, err := s.repo.FindByNoteID(ctx, noteID)
+	if err != nil {
+		s.log.Error("messages list failed", zap.String("noteID", noteID), zap.Error(err))
+		return nil, fmt.Errorf("listing messages: %w", err)
+	}
+	return msgs, nil
 }

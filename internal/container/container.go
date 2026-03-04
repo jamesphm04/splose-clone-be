@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
+	"github.com/jamesphm04/splose-clone-be/internal/clients"
 	"github.com/jamesphm04/splose-clone-be/internal/config"
 	"github.com/jamesphm04/splose-clone-be/internal/database"
 	"github.com/jamesphm04/splose-clone-be/internal/handlers"
@@ -23,8 +24,9 @@ type Container struct {
 	db  *gorm.DB
 
 	// Infrastructure
-	JWTManager *auth.Manager
-	S3Client   *storage.Client
+	JWTManager          *auth.Manager
+	S3Client            *storage.Client
+	SploseCloneAIClient *clients.SploseCloneAIClient
 
 	// Repositories
 	UserRepo       repositories.UserRepository
@@ -34,12 +36,12 @@ type Container struct {
 	MessageRepo    repositories.MessageRepository
 	AttachmentRepo repositories.AttachmentRepository
 	// Services
-	UserSvc           *services.UserService
-	PatientSvc        *services.PatientService
-	NoteService       *services.NoteService
-	ConvService       *services.ConversationService
-	MessageService    *services.MessageService
-	AttachmentService *services.AttachmentService
+	UserSvc       *services.UserService
+	PatientSvc    *services.PatientService
+	NoteSvc       *services.NoteService
+	ConvSvc       *services.ConversationService
+	MessageSvc    *services.MessageService
+	AttachmentSvc *services.AttachmentService
 	// Handlers
 	AuthHandler    *handlers.AuthHandler
 	UserHandler    *handlers.UserHandler
@@ -99,6 +101,9 @@ func (c *Container) buildInfrastructure() error {
 	}
 	c.S3Client = s3
 
+	// Splose Clone AI Client
+	c.SploseCloneAIClient = clients.NewSploseCloneAIClient(c.cfg.SploseCloneAI.APIKey, c.cfg.SploseCloneAI.BaseURL, c.log)
+
 	return nil
 }
 
@@ -114,10 +119,17 @@ func (c *Container) buildRepositories() {
 func (c *Container) buildServices() error {
 	c.UserSvc = services.NewUserService(c.UserRepo, c.JWTManager, c.cfg.Security.BcryptCost, c.log)
 	c.PatientSvc = services.NewPatientService(c.PatientRepo, c.log)
-	c.NoteService = services.NewNoteService(c.NoteRepo, c.log)
-	c.ConvService = services.NewConversationService(c.ConvRepo, c.log)
-	c.MessageService = services.NewMessageService(c.MessageRepo, c.log)
-	c.AttachmentService = services.NewAttachmentService(c.AttachmentRepo, c.S3Client, c.log)
+	c.NoteSvc = services.NewNoteService(c.NoteRepo, c.log)
+	c.MessageSvc = services.NewMessageService(c.MessageRepo, c.log)
+	c.AttachmentSvc = services.NewAttachmentService(c.AttachmentRepo, c.S3Client, c.log)
+	c.ConvSvc = services.NewConversationService(
+		c.ConvRepo,
+		c.SploseCloneAIClient,
+		c.MessageSvc,
+		c.NoteSvc,
+		c.PatientSvc,
+		c.AttachmentSvc,
+		c.log)
 	return nil
 }
 
@@ -125,8 +137,8 @@ func (c *Container) buildHandlers() error {
 	c.AuthHandler = handlers.NewAuthHandler(c.UserSvc, c.log)
 	c.UserHandler = handlers.NewUserHandler(c.UserSvc, c.log)
 	c.PatientHandler = handlers.NewPatientHandler(c.PatientSvc, c.log)
-	c.NoteHandler = handlers.NewNoteHandler(c.NoteService, c.ConvService, c.log)
-	c.ConvHandler = handlers.NewConversationHandler(c.ConvService, c.MessageService, c.AttachmentService, c.log)
+	c.NoteHandler = handlers.NewNoteHandler(c.NoteSvc, c.ConvSvc, c.log)
+	c.ConvHandler = handlers.NewConversationHandler(c.ConvSvc, c.MessageSvc, c.AttachmentSvc, c.log)
 	return nil
 }
 

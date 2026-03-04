@@ -11,7 +11,7 @@ import (
 
 type ConversationRepository interface {
 	Create(ctx context.Context, conversation *entities.Conversation) error
-	FindByNoteID(ctx context.Context, noteID string) (*entities.Conversation, error)
+	FindByNoteID(ctx context.Context, noteID string, offset *int, limit *int) (*entities.Conversation, error)
 	FindByID(ctx context.Context, id string) (*entities.Conversation, error)
 	List(ctx context.Context, offset, limit int) ([]entities.Conversation, int64, error)
 	Update(ctx context.Context, conversation *entities.Conversation) error
@@ -51,15 +51,52 @@ func (r *conversationRepo) FindByID(ctx context.Context, id string) (*entities.C
 	return &c, nil
 }
 
-func (r *conversationRepo) FindByNoteID(ctx context.Context, noteID string) (*entities.Conversation, error) {
+func (r *conversationRepo) FindByNoteID(
+	ctx context.Context,
+	noteID string,
+	offset *int,
+	limit *int,
+) (*entities.Conversation, error) {
 	var c entities.Conversation
-	err := r.db.WithContext(ctx).First(&c, "note_id = ?", noteID).Error
+
+	err := r.db.WithContext(ctx).
+		Preload("Messages", func(db *gorm.DB) *gorm.DB {
+			query := db.
+				Where("messages.deleted_at IS NULL").
+				Order("messages.created_at ASC")
+
+			if offset != nil {
+				query = query.Offset(*offset)
+			}
+			if limit != nil {
+				query = query.Limit(*limit)
+			}
+			return query
+		}).
+		Preload("Messages.Attachments", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Where("attachments.deleted_at IS NULL").
+				Order("attachments.created_at ASC")
+		}).
+		Preload("Note", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Where("notes.deleted_at IS NULL").
+				Order("notes.created_at ASC")
+		}).
+		First(&c, "note_id = ?", noteID).Error
+
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrNotFound
 	}
+
 	if err != nil {
-		r.log.Error("FindByNoteID failed", zap.String("noteID", noteID), zap.Error(err))
+		r.log.Error("FindByNoteID failed",
+			zap.String("noteID", noteID),
+			zap.Error(err),
+		)
+		return nil, err
 	}
+
 	return &c, nil
 }
 

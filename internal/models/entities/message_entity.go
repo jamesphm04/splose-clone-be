@@ -24,7 +24,7 @@ type Message struct {
 
 	// Associations
 	Conversation Conversation `gorm:"foreignKey:ConversationID" json:"-"`
-	Attachments  []Attachment `gorm:"foreignKey:MessageID"      json:"-"`
+	Attachments  []Attachment `gorm:"foreignKey:MessageID"      json:"attachments"`
 }
 
 func (m *Message) BeforeCreate(_ *gorm.DB) error {

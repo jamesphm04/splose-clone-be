@@ -11,7 +11,12 @@ import (
 
 type MessageRepository interface {
 	Create(ctx context.Context, message *entities.Message) error
+	FindByID(ctx context.Context, id string) (*entities.Message, error)
 	FindByConversationID(ctx context.Context, conversationID string) ([]entities.Message, error)
+	FindByNoteID(ctx context.Context, noteID string) ([]entities.Message, error)
+	List(ctx context.Context, offset, limit int) ([]entities.Message, int64, error)
+	Update(ctx context.Context, message *entities.Message) error
+	SoftDelete(ctx context.Context, id string) error
 }
 
 type messageRepo struct {
@@ -91,19 +96,36 @@ func (r *messageRepo) SoftDelete(ctx context.Context, id string) error {
 }
 
 func (r *messageRepo) FindByConversationID(ctx context.Context, conversationID string) ([]entities.Message, error) {
-	var msges []entities.Message
+	var msgs []entities.Message
 
 	err := r.db.
 		WithContext(ctx).
 		Preload("Attachments").
 		Where("conversation_id = ?", conversationID).
 		Order("created_at ASC").
-		Find(&msges).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, ErrNotFound
-	}
+		Find(&msgs).Error
 	if err != nil {
 		r.log.Error("FindByConversationID failed", zap.String("conversationID", conversationID), zap.Error(err))
+		return nil, err
 	}
-	return msges, nil
+
+	return msgs, nil
+}
+
+func (r *messageRepo) FindByNoteID(ctx context.Context, noteID string) ([]entities.Message, error) {
+	var msgs []entities.Message
+
+	err := r.db.
+		WithContext(ctx).
+		Table("messages").
+		Joins("JOIN conversations ON messages.conversation_id = conversations.id").
+		Where("conversations.note_id = ?", noteID).
+		Order("messages.created_at ASC").
+		Preload("Attachments").
+		Find(&msgs).Error
+	if err != nil {
+		r.log.Error("FindByNoteID failed", zap.String("noteID", noteID), zap.Error(err))
+		return nil, err
+	}
+	return msgs, nil
 }

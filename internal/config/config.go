@@ -14,12 +14,18 @@ import (
 type Config struct {
 	AppEnv string
 
-	Server   ServerConfig
-	Logger   *zap.Logger
-	DB       DBConfig
-	JWT      JWTConfig
-	AWS      AWSConfig
-	Security SecurityConfig
+	Server        ServerConfig
+	Logger        *zap.Logger
+	DB            DBConfig
+	JWT           JWTConfig
+	AWS           AWSConfig
+	Security      SecurityConfig
+	SploseCloneAI SploseCloneAIConfig
+}
+
+type SploseCloneAIConfig struct {
+	APIKey  string
+	BaseURL string
 }
 
 type ServerConfig struct {
@@ -131,6 +137,10 @@ func Load() (*Config, error) {
 		Security: SecurityConfig{
 			BcryptCost:    bcryptCost,
 			RateLimiteRPS: rps,
+		},
+		SploseCloneAI: SploseCloneAIConfig{
+			APIKey:  mustEnv("SPLOSE_CLONE_AI_API_KEY"),
+			BaseURL: mustEnv("SPLOSE_CLONE_AI_BASE_URL"),
 		},
 	}
 

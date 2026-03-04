@@ -107,5 +107,8 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
+	// Not send a new refresh token, just return the existing one
+	pair.RefreshToken = body.RefreshToken
+
 	utils.OK(c, pair)
 }

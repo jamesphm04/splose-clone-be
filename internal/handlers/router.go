@@ -92,6 +92,7 @@ func SetupRouter(deps RouterDeps) *gin.Engine {
 		conversations := protected.Group("/conversations")
 		{
 			conversations.POST("/send-message", deps.ConvHandler.SendMessage)
+			conversations.GET("/messages", deps.ConvHandler.ListMessagesByNoteID)
 		}
 	}
 

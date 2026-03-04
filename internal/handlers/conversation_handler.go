@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/jamesphm04/splose-clone-be/internal/models/entities"
+	"github.com/jamesphm04/splose-clone-be/internal/models/dtos"
 	"github.com/jamesphm04/splose-clone-be/internal/services"
 	"github.com/jamesphm04/splose-clone-be/internal/utils"
 	"go.uber.org/zap"
@@ -51,70 +51,41 @@ func (h *ConversationHandler) SendMessage(c *gin.Context) {
 		return
 	}
 
-	conversation, err := h.convSvc.GetByNoteID(c.Request.Context(), noteID)
-	if err != nil {
-		utils.BadRequest(c, fmt.Sprintf("failed to get conversation: %v", err))
-		return
-	}
-
-	// Save user message
-	userMsgIn := services.CreateMessageInput{
-		ConversationID: conversation.ID,
-		Role:           string(entities.RoleUser),
-		Content:        message,
-	}
-
-	userMsg, err := h.messageSvc.Create(c.Request.Context(), userMsgIn)
-	if err != nil {
-		utils.BadRequest(c, fmt.Sprintf("failed to save message: %v", err))
-		return
-	}
-
-	h.log.Info("user message created", zap.String("messageID", userMsg.ID))
-
 	// ─── Optional Attachment ──────────────────────────────
-
-	var presignedURL string
-
 	file, header, err := c.Request.FormFile("attachment")
 	if err != nil && err != http.ErrMissingFile {
 		utils.BadRequest(c, fmt.Sprintf("failed to parse attachment: %v", err))
 		return
 	}
 
-	if err == nil && file != nil && header != nil {
-		createAttIn := services.FileUploadInput{
-			NoteID:     noteID,
-			MessageID:  userMsg.ID,
-			File:       file,
-			FileHeader: header,
-		}
-
-		h.log.Info("creating attachment", zap.String("filename", header.Filename))
-
-		_, presignedURL, err = h.attachmentSvc.Create(c.Request.Context(), createAttIn)
-		if err != nil {
-			utils.BadRequest(c, fmt.Sprintf("failed to create attachment: %v", err))
-			return
-		}
-	}
-
-	// ─── MOCK AI Response ─────────────────────────────────
-
-	assistantMsgIn := services.CreateMessageInput{
-		ConversationID: conversation.ID,
-		Role:           string(entities.RoleAssistant),
-		Content:        "This is a mock AI response",
-	}
-
-	assistantMsg, err := h.messageSvc.Create(c.Request.Context(), assistantMsgIn)
+	assistantMsg, err := h.convSvc.SendMessage(c.Request.Context(), services.SendMessageInput{
+		NoteID:     noteID,
+		Message:    message,
+		File:       file,
+		FileHeader: header,
+	})
 	if err != nil {
-		utils.BadRequest(c, fmt.Sprintf("failed to save message: %v", err))
+		utils.BadRequest(c, fmt.Sprintf("failed to send message: %v", err))
 		return
 	}
 
-	utils.OK(c, SendMessageResponse{
-		Message:      assistantMsg.Content,
-		PresignedURL: presignedURL, // empty string if no attachment
-	})
+	utils.OK(c, dtos.ToDTO(assistantMsg))
+}
+
+// ListMessages GET /api/v1/conversations/messages?noteID=xxx
+func (h *ConversationHandler) ListMessagesByNoteID(c *gin.Context) {
+	noteID := c.Query("noteID")
+
+	if noteID == "" {
+		utils.BadRequest(c, "noteID is required")
+		return
+	}
+
+	messages, err := h.messageSvc.ListByNoteID(c.Request.Context(), noteID)
+	if err != nil {
+		utils.BadRequest(c, fmt.Sprintf("failed to get messages: %v", err))
+		return
+	}
+
+	utils.OK(c, messages)
 }
